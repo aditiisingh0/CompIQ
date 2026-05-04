@@ -26,8 +26,9 @@ app.use("/compare", compareRouter);
 app.use(notFound);
 app.use(errorHandler);
 
+
 app.listen(PORT, () => {
-  console.log(`🚀 CompIQ backend running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
