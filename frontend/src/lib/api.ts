@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API = "https://compiq.onrender.com";
 
 export type Level = "L3" | "L4" | "L5" | "L6" | "L7" | "L8";
 
