@@ -80,7 +80,8 @@ GET /company/:company
 📌 Current Status
 ✅ Fully functional locally
 ❌ Not deployed yet
-👤 Author
 
-Aditi Singh
-GitHub: https://github.com/aditiisingh0/CompIQ
+###👤 Author
+
+    Aditi Singh
+    GitHub: https://github.com/aditiisingh0/CompIQ
