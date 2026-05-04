@@ -44,7 +44,7 @@ function CompareContent() {
         setListError(null);
       })
       .catch((e) => {
-        setListError("Backend se data nahi aa raha. Check karo ki backend localhost:4000 pe chal raha hai.");
+        setListError("Data is Not Coming From Backend.");
         console.error("fetchSalaries error:", e);
       })
       .finally(() => setLoadingList(false));
