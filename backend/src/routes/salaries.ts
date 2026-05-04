@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { SalaryQuerySchema } from "../lib/schemas";
-import { normalizeCompany, displayCompany } from "../lib/normalize";
 import { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -21,58 +20,72 @@ router.get("/", async (req: Request, res: Response) => {
     const where: Prisma.SalaryWhereInput = {};
 
     if (company) {
-      where.company = { contains: normalizeCompany(company) };
+      where.company = { contains: company.trim(), mode: "insensitive" };
     }
     if (role) {
-      where.role = { contains: role.trim().toLowerCase() };
+      where.role = { contains: role.trim(), mode: "insensitive" };
     }
     if (level) {
-      where.level = level;
+      // level is an enum in DB — must match exactly: L3, L4, L5 etc
+      where.level = level as any;
     }
     if (location) {
-      where.location = { contains: location.trim().toLowerCase() };
+      where.location = { contains: location.trim(), mode: "insensitive" };
     }
+
+    const safePage  = Math.max(1, page  ?? 1);
+    const safeLimit = Math.min(100, Math.max(1, limit ?? 20));
 
     const [salaries, total] = await Promise.all([
       prisma.salary.findMany({
         where,
         orderBy: { total_compensation: sort === "asc" ? "asc" : "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit,
       }),
       prisma.salary.count({ where }),
     ]);
 
     const formatted = salaries.map((s) => ({
-      ...s,
-      company: displayCompany(s.company),
-      role: s.role
-        .split(" ")
-        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" "),
-      location: s.location
-        .split(" ")
-        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" "),
+      id:                 s.id,
+      company:            toTitleCase(s.company),   // display name from company field
+      role:               toTitleCase(s.role),
+      level:              s.level,
+      location:           toTitleCase(s.location),
+      experience_years:   s.experience_years,
+      base_salary:        s.base_salary,
+      bonus:              s.bonus,
+      stock:              s.stock,
+      total_compensation: s.total_compensation,
+      confidence_score:   s.confidence_score,
+      created_at:         s.created_at,
     }));
 
     return res.json({
       data: formatted,
       pagination: {
         total,
-        page,
-        limit,
-        total_pages: Math.ceil(total / limit),
+        page:        safePage,
+        limit:       safeLimit,
+        total_pages: Math.ceil(total / safeLimit),
       },
     });
 
   } catch (error) {
     console.error("❌ Salaries route error:", error);
-
+    const message = error instanceof Error ? error.message : "Unknown error";
     return res.status(500).json({
-      error: "Internal server error",
+      error:  "Internal server error",
+      detail: process.env.NODE_ENV !== "production" ? message : undefined,
     });
   }
 });
+
+function toTitleCase(str: string): string {
+  return str
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
 
 export default router;
