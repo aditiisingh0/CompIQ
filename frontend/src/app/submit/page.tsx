@@ -22,7 +22,7 @@ export default function SubmitPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:4000/ingest-salary", {
+      const res = await fetch("https://compiq.onrender.com/ingest-salary", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

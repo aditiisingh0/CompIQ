@@ -57,7 +57,7 @@ export default async function SalariesPage({ searchParams }: PageProps) {
           <p className="text-4xl mb-3">⚠️</p>
           <p>Could not connect to the API. Make sure the backend is running.</p>
           <code className="text-xs text-accent mt-2 block">
-            http://localhost:4000
+            https://compiq.onrender.com
           </code>
         </div>
       ) : result ? (

@@ -66,7 +66,7 @@ cd frontend
 
 Create .env.local:
 
-NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=https://compiq.onrender.com
 
 Run:
 
