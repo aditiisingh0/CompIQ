@@ -7,14 +7,16 @@ import compareRouter from "./routes/compare";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = parseInt(process.env.PORT || "4000", 10);
 
 // Middleware
 app.use(cors({ origin: true }));
 app.use(express.json());
 
 // Health check
-app.get("/health", (_, res) => res.json({ status: "ok", timestamp: new Date() }));
+app.get("/health", (_, res) =>
+  res.json({ status: "ok", timestamp: new Date() })
+);
 
 // Routes
 app.post("/ingest-salary", ingestRouter);
@@ -26,9 +28,9 @@ app.use("/compare", compareRouter);
 app.use(notFound);
 app.use(errorHandler);
 
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// 👇 KEY FIX: bind to 0.0.0.0 so Render can detect the port
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
 
 export default app;
