@@ -1,38 +1,57 @@
-import { Suspense } from "react";
-import { fetchSalaries, SalaryFilters as SalaryFiltersType, Level } from "@/lib/api";
+"use client";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  fetchSalaries,
+  SalaryFilters as SalaryFiltersType,
+  SalaryListResponse,
+  Level,
+} from "@/lib/api";
 import SalaryFilters from "@/components/SalaryFilters";
 import SalaryTable from "@/components/SalaryTable";
 import Pagination from "@/components/Pagination";
 
-interface PageProps {
-  searchParams: {
-    company?: string;
-    role?: string;
-    level?: string;
-    location?: string;
-    sort?: string;
-    page?: string;
-  };
-}
+function SalariesContent() {
+  const searchParams = useSearchParams();
+  const [result, setResult] = useState<SalaryListResponse | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
-export default async function SalariesPage({ searchParams }: PageProps) {
   const filters: SalaryFiltersType = {
-    company: searchParams.company,
-    role: searchParams.role,
-    level: searchParams.level as Level | undefined,
-    location: searchParams.location,
-    sort: (searchParams.sort as "asc" | "desc") || "desc",
-    page: parseInt(searchParams.page || "1"),
+    company: searchParams.get("company") || undefined,
+    role: searchParams.get("role") || undefined,
+    level: (searchParams.get("level") as Level) || undefined,
+    location: searchParams.get("location") || undefined,
+    sort: (searchParams.get("sort") as "asc" | "desc") || "desc",
+    page: parseInt(searchParams.get("page") || "1"),
     limit: 20,
   };
 
-  let result;
-  let error = false;
-  try {
-    result = await fetchSalaries(filters);
-  } catch {
-    error = true;
-  }
+  const load = useCallback(async (attempt = 0) => {
+    setLoading(true);
+    setError(false);
+    try {
+      const data = await fetchSalaries(filters);
+      setResult(data);
+      setError(false);
+    } catch {
+      if (attempt < 3) {
+        // Retry after delay: 3s, 6s, 10s — gives Render time to wake up
+        const delay = [3000, 6000, 10000][attempt];
+        setRetryCount(attempt + 1);
+        setTimeout(() => load(attempt + 1), delay);
+      } else {
+        setError(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    load(0);
+  }, [searchParams]);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
@@ -51,16 +70,39 @@ export default async function SalariesPage({ searchParams }: PageProps) {
         <SalaryFilters />
       </Suspense>
 
-      {/* Table */}
-      {error ? (
+      {/* Loading */}
+      {loading && (
+        <div className="text-center py-24 text-text-secondary">
+          <div className="w-8 h-8 border-2 border-accent/40 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+          {retryCount > 0 ? (
+            <p className="text-sm">
+              Backend waking up... attempt {retryCount}/3
+            </p>
+          ) : (
+            <p className="text-sm">Loading salaries...</p>
+          )}
+        </div>
+      )}
+
+      {/* Error */}
+      {!loading && error && (
         <div className="text-center py-24 text-text-secondary">
           <p className="text-4xl mb-3">⚠️</p>
-          <p>Could not connect to the API. Make sure the backend is running.</p>
-          <code className="text-xs text-accent mt-2 block">
+          <p className="mb-3">Could not connect to the API.</p>
+          <code className="text-xs text-accent mt-2 block mb-4">
             https://compiq.onrender.com
           </code>
+          <button
+            onClick={() => load(0)}
+            className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent/90 transition-colors"
+          >
+            Retry
+          </button>
         </div>
-      ) : result ? (
+      )}
+
+      {/* Table */}
+      {!loading && !error && result && (
         <>
           <SalaryTable salaries={result.data} />
           <Suspense>
@@ -71,7 +113,20 @@ export default async function SalariesPage({ searchParams }: PageProps) {
             />
           </Suspense>
         </>
-      ) : null}
+      )}
     </div>
+  );
+}
+
+export default function SalariesPage() {
+  return (
+    <Suspense fallback={
+      <div className="text-center py-24 text-text-secondary">
+        <div className="w-8 h-8 border-2 border-accent/40 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm">Loading...</p>
+      </div>
+    }>
+      <SalariesContent />
+    </Suspense>
   );
 }
