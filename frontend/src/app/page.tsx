@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchSalaries, formatINR, LEVEL_COLORS, Level } from "@/lib/api";
+import { formatINR, LEVEL_COLORS, Level } from "@/lib/api";
 
 // Per-company logo color mapping
 const COMPANY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -24,15 +24,35 @@ const featuredCompanies = [
   { name: "Zepto",     records: 5  },
 ];
 
-export default async function HomePage() {
-  let stats = { total: 0 };
-  let recentSalaries: any[] = [];
-
+// Fetch with a hard 5-second timeout so build never hangs
+async function fetchRecentSalaries() {
   try {
-    const data = await fetchSalaries({ limit: 5, sort: "desc" });
-    stats.total = data.pagination.total;
-    recentSalaries = data.data;
-  } catch {}
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(
+      "https://compiq.onrender.com/api/salaries?limit=5&sort=desc",
+      {
+        signal: controller.signal,
+        next: { revalidate: 3600 }, // cache for 1 hour
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return { total: 0, salaries: [] };
+    const data = await res.json();
+    return {
+      total: data.pagination?.total ?? 0,
+      salaries: data.data ?? [],
+    };
+  } catch {
+    // Backend cold start / timeout — graceful fallback
+    return { total: 0, salaries: [] };
+  }
+}
+
+export default async function HomePage() {
+  const { total, salaries: recentSalaries } = await fetchRecentSalaries();
 
   return (
     <div className="min-h-screen">
@@ -74,9 +94,9 @@ export default async function HomePage() {
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
           {[
-            { label: "Salary records",  value: stats.total > 0 ? `${stats.total.toLocaleString()}+` : "39+" },
-            { label: "Level system",    value: "L3 → L8" },
-            { label: "TC breakdown",    value: "3-part" },
+            { label: "Salary records", value: total > 0 ? `${total.toLocaleString()}+` : "39+" },
+            { label: "Level system",   value: "L3 → L8" },
+            { label: "TC breakdown",   value: "3-part" },
           ].map(({ label, value }) => (
             <div key={label} className="p-4 rounded-xl border border-border bg-panel text-center">
               <div className="font-display text-xl font-bold text-text-primary">{value}</div>
@@ -101,7 +121,6 @@ export default async function HomePage() {
                 href={`/company/${c.name.toLowerCase()}`}
                 className="flex items-center gap-3 p-3 rounded-xl border border-border bg-panel hover:border-accent/40 transition-colors"
               >
-                {/* Logo circle */}
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium flex-shrink-0 ${colors.bg} ${colors.text}`}>
                   {c.name[0]}
                 </div>
@@ -140,7 +159,7 @@ export default async function HomePage() {
                 </tr>
               </thead>
               <tbody>
-                {recentSalaries.map((s) => (
+                {recentSalaries.map((s: any) => (
                   <tr key={s.id} className="border-b border-border last:border-0 hover:bg-panel/50 transition-colors">
                     <td className="py-3 px-4">
                       <Link href={`/company/${s.company.toLowerCase()}`} className="font-medium text-text-primary hover:text-accent transition-colors">
@@ -172,17 +191,17 @@ export default async function HomePage() {
         <div className="grid md:grid-cols-3 gap-4">
           {[
             {
-              bg: "bg-teal-50",
+              bg: "bg-teal-950",
               title: "Same title ≠ same pay",
               body: '"Senior Engineer" could be L5 at one company and L6 at another. Title-only data is meaningless.',
             },
             {
-              bg: "bg-blue-50",
+              bg: "bg-blue-950",
               title: "TC = Base + Bonus + Stock",
               body: "We capture the full picture. Stock vesting and bonuses can double your effective salary.",
             },
             {
-              bg: "bg-purple-50",
+              bg: "bg-purple-950",
               title: "Real comparability",
               body: "Compare L5 at Google vs L5 at Flipkart — apples to apples, not guesswork.",
             },
@@ -198,9 +217,9 @@ export default async function HomePage() {
 
       {/* ── CTA ── */}
       <section className="px-6 py-12">
-        <div className="text-center p-10 rounded-2xl bg-teal-50 border border-teal-200">
-          <h2 className="font-display text-xl font-bold text-teal-900 mb-2">Know your worth</h2>
-          <p className="text-teal-700 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+        <div className="text-center p-10 rounded-2xl bg-surface border border-border">
+          <h2 className="font-display text-xl font-bold text-text-primary mb-2">Know your worth</h2>
+          <p className="text-text-secondary text-sm mb-6 max-w-sm mx-auto leading-relaxed">
             Submit your salary anonymously and help others make better career decisions.
           </p>
           <Link
