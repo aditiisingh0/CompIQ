@@ -75,9 +75,6 @@ export default function RootLayout({
                       <Link
                         href={href}
                         className="text-sm text-text-secondary hover:text-accent transition-colors"
-                        style={{ color: "var(--text-secondary)" }}
-                        onMouseEnter={e => (e.currentTarget.style.color = "var(--accent)")}
-                        onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
                       >
                         {label}
                       </Link>
