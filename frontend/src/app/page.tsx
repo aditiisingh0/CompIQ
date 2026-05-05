@@ -1,145 +1,139 @@
 import Link from "next/link";
-import { fetchSalaries, formatINR } from "@/lib/api";
+import { fetchSalaries, formatINR, LEVEL_COLORS, Level } from "@/lib/api";
+
+// Per-company logo color mapping
+const COMPANY_COLORS: Record<string, { bg: string; text: string }> = {
+  Google:    { bg: "bg-teal-50",   text: "text-teal-800" },
+  Microsoft: { bg: "bg-blue-50",   text: "text-blue-800" },
+  Amazon:    { bg: "bg-amber-50",  text: "text-amber-800" },
+  Meta:      { bg: "bg-purple-50", text: "text-purple-800" },
+  Flipkart:  { bg: "bg-red-50",    text: "text-red-800" },
+  Swiggy:    { bg: "bg-pink-50",   text: "text-pink-800" },
+  Razorpay:  { bg: "bg-green-50",  text: "text-green-800" },
+  Zepto:     { bg: "bg-teal-50",   text: "text-teal-800" },
+};
+
+const featuredCompanies = [
+  { name: "Google",    records: 28 },
+  { name: "Microsoft", records: 21 },
+  { name: "Amazon",    records: 19 },
+  { name: "Meta",      records: 15 },
+  { name: "Flipkart",  records: 12 },
+  { name: "Swiggy",    records: 9  },
+  { name: "Razorpay",  records: 7  },
+  { name: "Zepto",     records: 5  },
+];
 
 export default async function HomePage() {
   let stats = { total: 0 };
   let recentSalaries: any[] = [];
-  let topCompanies: string[] = [];
 
   try {
     const data = await fetchSalaries({ limit: 5, sort: "desc" });
     stats.total = data.pagination.total;
     recentSalaries = data.data;
-    // unique companies
-    const seen = new Set<string>();
-    data.data.forEach((s) => seen.add(s.company));
-    topCompanies = Array.from(seen);
   } catch {}
-
-  // Top companies from seed data
-  const featuredCompanies = [
-    "Google", "Microsoft", "Amazon", "Meta",
-    "Flipkart", "Swiggy", "Razorpay", "Zepto",
-  ];
 
   return (
     <div className="min-h-screen">
-      {/* Grid background */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-40"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(124,111,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(124,111,255,0.06) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
 
-      {/* Hero */}
-      <section className="relative max-w-7xl mx-auto px-6 pt-24 pb-16">
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
+      {/* ── Hero ── */}
+      <section className="px-6 pt-20 pb-14 text-center border-b border-border">
+        {/* Live badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-panel text-text-secondary text-xs font-mono mb-6">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
+          Level-structured compensation data · India &amp; Global
+        </div>
 
-        <div className="relative text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent/30 bg-accent/5 text-accent text-xs font-mono mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
-            Level-structured compensation data
-          </div>
+        <h1 className="font-display text-4xl md:text-6xl font-bold leading-tight mb-4 text-text-primary">
+          Know what{" "}
+          <span className="text-accent">engineers</span>{" "}
+          actually make
+        </h1>
 
-          <h1 className="font-display text-5xl md:text-7xl font-bold leading-tight mb-6">
-            Know what{" "}
-            <span
-              style={{
-                background: "linear-gradient(135deg, #7C6FFF 0%, #FF5F6D 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              engineers
-            </span>{" "}
-            actually make
-          </h1>
+        <p className="text-text-secondary text-base md:text-lg max-w-lg mx-auto mb-8 leading-relaxed">
+          Structured by level. Comparable by design. Real TC breakdowns —
+          not vague ranges — for India's tech ecosystem.
+        </p>
 
-          <p className="text-text-secondary text-lg md:text-xl max-w-xl mx-auto mb-10">
-            Structured by level. Comparable by design. Built for India's tech
-            ecosystem and beyond. No vague ranges — real TC breakdowns.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/salaries"
-              className="px-8 py-3.5 rounded-lg bg-accent hover:bg-accent/90 text-white font-medium text-base transition-all hover:shadow-lg hover:shadow-accent/25"
-            >
-              Browse Salaries →
-            </Link>
-            <Link
-              href="/submit"
-              className="px-8 py-3.5 rounded-lg border border-border hover:border-accent/40 text-text-secondary hover:text-text-primary font-medium text-base transition-all"
-            >
-              Submit Your Salary
-            </Link>
-          </div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
+          <Link
+            href="/salaries"
+            className="px-7 py-3 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 transition-colors"
+          >
+            Browse Salaries →
+          </Link>
+          <Link
+            href="/submit"
+            className="px-7 py-3 rounded-xl border border-border text-text-secondary font-medium text-sm hover:border-accent/40 hover:text-text-primary transition-colors"
+          >
+            Submit Your Salary
+          </Link>
         </div>
 
         {/* Stats strip */}
-        <div className="relative mt-16 grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+        <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
           {[
-            { label: "Salary Records", value: stats.total > 0 ? stats.total.toLocaleString() : "39+" },
-            { label: "Level System", value: "L3 → L8" },
-            { label: "TC Breakdown", value: "Base+Bonus+Stock" },
+            { label: "Salary records",  value: stats.total > 0 ? `${stats.total.toLocaleString()}+` : "39+" },
+            { label: "Level system",    value: "L3 → L8" },
+            { label: "TC breakdown",    value: "3-part" },
           ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="text-center p-4 rounded-xl border border-border bg-panel"
-            >
-              <div className="font-display text-2xl font-bold text-text-primary">
-                {value}
-              </div>
-              <div className="text-text-secondary text-xs mt-1">{label}</div>
+            <div key={label} className="p-4 rounded-xl border border-border bg-panel text-center">
+              <div className="font-display text-xl font-bold text-text-primary">{value}</div>
+              <div className="text-xs text-text-secondary mt-1">{label}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Featured Companies */}
-      <section className="max-w-7xl mx-auto px-6 py-12 border-t border-border">
-        <h2 className="font-display text-xl font-bold mb-6 text-text-primary">
-          Browse by Company
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          {featuredCompanies.map((company) => (
-            <Link
-              key={company}
-              href={`/company/${company.toLowerCase()}`}
-              className="px-4 py-2 rounded-lg border border-border bg-panel hover:border-accent/40 hover:text-accent text-text-secondary text-sm font-medium transition-all"
-            >
-              {company}
-            </Link>
-          ))}
+      {/* ── Browse by Company ── */}
+      <section className="px-6 py-10 border-b border-border">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-lg font-bold text-text-primary">Browse by company</h2>
+          <Link href="/salaries" className="text-accent text-sm hover:underline">View all →</Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {featuredCompanies.map((c) => {
+            const colors = COMPANY_COLORS[c.name] ?? { bg: "bg-panel", text: "text-text-primary" };
+            return (
+              <Link
+                key={c.name}
+                href={`/company/${c.name.toLowerCase()}`}
+                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-panel hover:border-accent/40 transition-colors"
+              >
+                {/* Logo circle */}
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium flex-shrink-0 ${colors.bg} ${colors.text}`}>
+                  {c.name[0]}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-text-primary truncate">{c.name}</div>
+                  <div className="text-xs text-text-secondary">{c.records} records</div>
+                </div>
+              </Link>
+            );
+          })}
           <Link
             href="/salaries"
-            className="px-4 py-2 rounded-lg border border-dashed border-border text-text-secondary text-sm hover:text-accent transition-colors"
+            className="flex items-center justify-center p-3 rounded-xl border border-dashed border-border text-text-secondary text-sm hover:text-accent hover:border-accent/40 transition-colors"
           >
             View all →
           </Link>
         </div>
       </section>
 
-      {/* Recent Salaries */}
+      {/* ── Recently Added ── */}
       {recentSalaries.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-12 border-t border-border">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-xl font-bold text-text-primary">
-              Recently Added
-            </h2>
-            <Link href="/salaries" className="text-accent text-sm hover:underline">
-              View all →
-            </Link>
+        <section className="px-6 py-10 border-b border-border">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-display text-lg font-bold text-text-primary">Recently added</h2>
+            <Link href="/salaries" className="text-accent text-sm hover:underline">View all →</Link>
           </div>
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-panel">
-                  {["Company", "Role", "Level", "Location", "Total TC"].map((h) => (
-                    <th key={h} className="py-3 px-4 text-left text-xs font-medium text-subtle uppercase tracking-wider">
+                  {["Company", "Role", "Level", "Location", "Base", "Total TC"].map((h) => (
+                    <th key={h} className="py-3 px-4 text-left text-xs font-medium text-subtle uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -149,23 +143,19 @@ export default async function HomePage() {
                 {recentSalaries.map((s) => (
                   <tr key={s.id} className="border-b border-border last:border-0 hover:bg-panel/50 transition-colors">
                     <td className="py-3 px-4">
-                      <Link
-                        href={`/company/${s.company.toLowerCase()}`}
-                        className="font-medium text-text-primary hover:text-accent transition-colors"
-                      >
+                      <Link href={`/company/${s.company.toLowerCase()}`} className="font-medium text-text-primary hover:text-accent transition-colors">
                         {s.company}
                       </Link>
                     </td>
                     <td className="py-3 px-4 text-text-secondary">{s.role}</td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-mono font-medium bg-accent/10 text-accent border-accent/20">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-mono font-medium ${LEVEL_COLORS[s.level as Level]}`}>
                         {s.level}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-text-secondary">{s.location}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-text-primary">
-                      {formatINR(s.total_compensation)}
-                    </td>
+                    <td className="py-3 px-4 text-text-secondary capitalize">{s.location}</td>
+                    <td className="py-3 px-4 font-mono text-text-primary">{formatINR(s.base_salary)}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-accent">{formatINR(s.total_compensation)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -174,58 +164,54 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Why levels matter */}
-      <section className="max-w-7xl mx-auto px-6 py-16 border-t border-border">
-        <h2 className="font-display text-2xl font-bold mb-10 text-center">
+      {/* ── Why Levels Matter ── */}
+      <section className="px-6 py-12 border-b border-border">
+        <h2 className="font-display text-xl font-bold text-center mb-8 text-text-primary">
           Why <span className="text-accent">levels</span> change everything
         </h2>
         <div className="grid md:grid-cols-3 gap-4">
           {[
             {
-              icon: "⚡",
-              title: "Same title ≠ Same pay",
-              body: 'A "Senior Engineer" at one company may be L5. At another, L6. Title-only data is meaningless.',
+              bg: "bg-teal-50",
+              title: "Same title ≠ same pay",
+              body: '"Senior Engineer" could be L5 at one company and L6 at another. Title-only data is meaningless.',
             },
             {
-              icon: "🎯",
+              bg: "bg-blue-50",
               title: "TC = Base + Bonus + Stock",
               body: "We capture the full picture. Stock vesting and bonuses can double your effective salary.",
             },
             {
-              icon: "⚖️",
+              bg: "bg-purple-50",
               title: "Real comparability",
-              body: "Compare L5 at Google vs L5 at Flipkart. Apples to apples, not guesswork.",
+              body: "Compare L5 at Google vs L5 at Flipkart — apples to apples, not guesswork.",
             },
-          ].map(({ icon, title, body }) => (
-            <div
-              key={title}
-              className="p-6 rounded-xl border border-border bg-panel hover:border-accent/30 transition-colors"
-            >
-              <div className="text-3xl mb-3">{icon}</div>
-              <h3 className="font-semibold text-text-primary mb-2">{title}</h3>
-              <p className="text-text-secondary text-sm leading-relaxed">{body}</p>
+          ].map(({ bg, title, body }) => (
+            <div key={title} className="p-5 rounded-xl border border-border bg-panel hover:border-accent/30 transition-colors">
+              <div className={`w-8 h-8 rounded-lg ${bg} mb-4`} />
+              <h3 className="font-semibold text-text-primary text-sm mb-2">{title}</h3>
+              <p className="text-text-secondary text-xs leading-relaxed">{body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="max-w-7xl mx-auto px-6 py-16 border-t border-border">
-        <div className="text-center p-10 rounded-2xl border border-accent/20 bg-accent/5">
-          <h2 className="font-display text-2xl font-bold text-text-primary mb-3">
-            Know your worth
-          </h2>
-          <p className="text-text-secondary text-sm mb-6 max-w-md mx-auto">
+      {/* ── CTA ── */}
+      <section className="px-6 py-12">
+        <div className="text-center p-10 rounded-2xl bg-teal-50 border border-teal-200">
+          <h2 className="font-display text-xl font-bold text-teal-900 mb-2">Know your worth</h2>
+          <p className="text-teal-700 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
             Submit your salary anonymously and help others make better career decisions.
           </p>
           <Link
             href="/submit"
-            className="inline-flex px-6 py-3 rounded-lg bg-accent text-white font-medium hover:bg-accent/90 transition-colors"
+            className="inline-flex px-6 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
           >
-            Submit Your Salary →
+            Submit your salary →
           </Link>
         </div>
       </section>
+
     </div>
   );
 }

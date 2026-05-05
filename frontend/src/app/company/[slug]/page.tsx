@@ -7,6 +7,28 @@ interface PageProps {
   params: { slug: string };
 }
 
+// Maps each level to a color pill style
+const LEVEL_PILL: Record<string, string> = {
+  L3: "bg-teal-50 text-teal-800 border-teal-200",
+  L4: "bg-blue-50 text-blue-800 border-blue-200",
+  L5: "bg-amber-50 text-amber-800 border-amber-200",
+  L6: "bg-purple-50 text-purple-800 border-purple-200",
+  L7: "bg-red-50 text-red-800 border-red-200",
+};
+
+function LevelPill({ level }: { level: string }) {
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center justify-center px-2 py-0.5 rounded-md border text-xs font-mono font-medium",
+        LEVEL_PILL[level] ?? LEVEL_COLORS[level as Level]
+      )}
+    >
+      {level}
+    </span>
+  );
+}
+
 export default async function CompanyPage({ params }: PageProps) {
   let company;
   try {
@@ -17,136 +39,177 @@ export default async function CompanyPage({ params }: PageProps) {
 
   const maxCount = Math.max(...company.level_distribution.map((l) => l.count));
 
-  // Compute averages
-  const avgBase = company.salaries.reduce((s, r) => s + r.base_salary, 0) / company.salaries.length;
-  const avgBonus = company.salaries.reduce((s, r) => s + r.bonus, 0) / company.salaries.length;
-  const avgStock = company.salaries.reduce((s, r) => s + r.stock, 0) / company.salaries.length;
+  const avgBase = Math.round(company.salaries.reduce((s, r) => s + r.base_salary, 0) / company.salaries.length);
+  const avgBonus = Math.round(company.salaries.reduce((s, r) => s + r.bonus, 0) / company.salaries.length);
+  const avgStock = Math.round(company.salaries.reduce((s, r) => s + r.stock, 0) / company.salaries.length);
   const maxTC = Math.max(...company.salaries.map((s) => s.total_compensation));
   const minTC = Math.min(...company.salaries.map((s) => s.total_compensation));
+  const totalAvg = avgBase + avgBonus + avgStock;
+
+  const basePct = Math.round((avgBase / totalAvg) * 100);
+  const bonusPct = Math.round((avgBonus / totalAvg) * 100);
+  const stockPct = Math.round((avgStock / totalAvg) * 100);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      {/* Breadcrumb */}
-      <div className="text-sm text-text-secondary mb-6">
+
+      {/* ── Breadcrumb ── */}
+      <div className="flex items-center gap-2 text-xs text-text-secondary mb-6">
         <Link href="/salaries" className="hover:text-text-primary transition-colors">
           Salaries
         </Link>
-        <span className="mx-2">/</span>
+        <span className="opacity-40">/</span>
         <span className="text-text-primary">{company.company}</span>
       </div>
 
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-4xl font-bold text-text-primary mb-1">
-            {company.company}
-          </h1>
-          <p className="text-text-secondary text-sm">
-            {company.count} salary record{company.count !== 1 ? "s" : ""}
-          </p>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-8">
+        <div className="flex items-center gap-4">
+          {/* Company logo circle */}
+          <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-xl font-medium text-teal-800 flex-shrink-0">
+            {company.company[0]}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="font-display text-2xl font-bold text-text-primary">
+                {company.company}
+              </h1>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200">
+                Verified
+              </span>
+            </div>
+            <p className="text-xs text-text-secondary flex items-center gap-2">
+              <span>{company.count} salary record{company.count !== 1 ? "s" : ""}</span>
+              <span className="opacity-40">·</span>
+              <span>Updated recently</span>
+            </p>
+          </div>
         </div>
         <Link
           href="/submit"
-          className="px-4 py-2 rounded-lg border border-accent/30 text-accent text-sm font-medium hover:bg-accent/5 transition-colors"
+          className="px-4 py-2 rounded-xl border border-accent/40 text-accent text-sm font-medium hover:bg-accent/5 transition-colors"
         >
           + Add Salary
         </Link>
       </div>
 
-      {/* TC Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+      {/* ── TC Stats Cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         {[
-          { label: "Median TC", value: formatINR(company.median_total_compensation), highlight: true },
-          { label: "Avg Base", value: formatINR(avgBase) },
-          { label: "Avg Bonus", value: formatINR(avgBonus) },
-          { label: "Avg Stock", value: formatINR(avgStock) },
-        ].map(({ label, value, highlight }) => (
+          { label: "Median TC", value: formatINR(company.median_total_compensation), sub: "total comp / year", highlight: true },
+          { label: "Avg Base", value: formatINR(avgBase), sub: "per year" },
+          { label: "Avg Bonus", value: formatINR(avgBonus), sub: "per year" },
+          { label: "Avg Stock", value: formatINR(avgStock), sub: "per year" },
+        ].map(({ label, value, sub, highlight }) => (
           <div
             key={label}
             className={clsx(
-              "p-4 rounded-xl border",
+              "p-4 rounded-xl",
               highlight
-                ? "border-accent/30 bg-accent/5"
-                : "border-border bg-panel"
+                ? "bg-teal-50 border border-teal-200"
+                : "bg-panel border border-border"
             )}
           >
-            <div className="text-xs text-text-secondary mb-1">{label}</div>
-            <div className={clsx(
-              "font-display text-xl font-bold",
-              highlight ? "text-accent" : "text-text-primary"
-            )}>
+            <div className={clsx("text-xs uppercase tracking-wider mb-1", highlight ? "text-teal-700" : "text-text-secondary")}>
+              {label}
+            </div>
+            <div className={clsx("font-display text-xl font-bold", highlight ? "text-accent" : "text-text-primary")}>
               {value}
             </div>
+            <div className="text-xs text-text-secondary mt-0.5">{sub}</div>
           </div>
         ))}
       </div>
 
-      {/* TC Range */}
-      <div className="mb-8 p-4 rounded-xl border border-border bg-panel flex items-center gap-6 flex-wrap">
-        <div>
-          <div className="text-xs text-text-secondary mb-1">TC Range</div>
-          <div className="font-mono text-sm text-text-primary font-medium">
-            {formatINR(minTC)} — {formatINR(maxTC)}
+      {/* ── TC Range Bar ── */}
+      <div className="mb-6 p-4 rounded-xl border border-border bg-panel flex items-center gap-6 flex-wrap">
+        <div className="flex gap-6">
+          <div>
+            <div className="text-xs text-text-secondary mb-0.5">Min TC</div>
+            <div className="text-sm font-medium text-text-primary font-mono">{formatINR(minTC)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-text-secondary mb-0.5">Max TC</div>
+            <div className="text-sm font-medium text-text-primary font-mono">{formatINR(maxTC)}</div>
           </div>
         </div>
-        <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden min-w-32">
-          <div className="h-full rounded-full bg-gradient-to-r from-accent/40 to-accent" style={{ width: "100%" }} />
+        <div className="flex-1 min-w-32">
+          <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+            <div className="h-full w-full rounded-full bg-accent" />
+          </div>
+          <div className="flex justify-between mt-1.5 text-xs text-text-secondary">
+            <span>{formatINR(minTC)}</span>
+            <span>{formatINR(maxTC)}</span>
+          </div>
         </div>
       </div>
 
-      {/* Level Distribution */}
-      <div className="mb-8 p-5 rounded-xl border border-border bg-panel">
-        <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-4">
-          Level Distribution
-        </h2>
-        <div className="space-y-3">
-          {company.level_distribution.map(({ level, count }) => {
-            const levelSalaries = company.salaries.filter((s) => s.level === level);
-            const levelMedian = levelSalaries.length > 0
-              ? levelSalaries.reduce((s, r) => s + r.total_compensation, 0) / levelSalaries.length
-              : 0;
-            return (
-              <div key={level} className="flex items-center gap-3">
-                <span
-                  className={clsx(
-                    "inline-flex items-center px-2 py-0.5 rounded border text-xs font-mono font-medium w-10 justify-center flex-shrink-0",
-                    LEVEL_COLORS[level as Level]
-                  )}
-                >
-                  {level}
-                </span>
-                <div className="flex-1 bg-surface rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent/60 transition-all"
-                    style={{ width: `${(count / maxCount) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs font-mono text-text-secondary w-6 text-right flex-shrink-0">
-                  {count}
-                </span>
-                {levelMedian > 0 && (
-                  <span className="text-xs font-mono text-text-secondary w-16 text-right flex-shrink-0">
-                    {formatINR(levelMedian)} avg
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Salary Table */}
-      <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-3">
-        All Salary Records
+      {/* ── Compensation Breakdown ── */}
+      <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">
+        Compensation breakdown
       </h2>
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="p-5 rounded-xl border border-border bg-panel mb-6 space-y-3">
+        {[
+          { label: "Base", pct: basePct, value: formatINR(avgBase), color: "bg-accent" },
+          { label: "Bonus", pct: bonusPct, value: formatINR(avgBonus), color: "bg-blue-400" },
+          { label: "Stock", pct: stockPct, value: formatINR(avgStock), color: "bg-amber-400" },
+        ].map(({ label, pct, value, color }) => (
+          <div key={label} className="flex items-center gap-3">
+            <span className="text-xs text-text-secondary w-12 flex-shrink-0">{label}</span>
+            <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
+              <div className={clsx("h-full rounded-full", color)} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-xs font-medium text-text-primary min-w-24 text-right">
+              {value} <span className="text-text-secondary font-normal">{pct}%</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Level Distribution ── */}
+      <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">
+        Level distribution
+      </h2>
+      <div className="p-5 rounded-xl border border-border bg-panel mb-6 space-y-3">
+        {company.level_distribution.map(({ level, count }) => {
+          const levelSalaries = company.salaries.filter((s) => s.level === level);
+          const levelAvg = levelSalaries.length > 0
+            ? Math.round(levelSalaries.reduce((s, r) => s + r.total_compensation, 0) / levelSalaries.length)
+            : 0;
+          return (
+            <div key={level} className="flex items-center gap-3">
+              <LevelPill level={level} />
+              <div className="flex-1 bg-surface rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent/60 transition-all"
+                  style={{ width: `${(count / maxCount) * 100}%` }}
+                />
+              </div>
+              <span className="text-xs font-mono text-text-secondary w-5 text-right flex-shrink-0">
+                {count}
+              </span>
+              {levelAvg > 0 && (
+                <span className="text-xs font-mono text-text-secondary w-20 text-right flex-shrink-0">
+                  {formatINR(levelAvg)} avg
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Salary Table ── */}
+      <h2 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">
+        All salary records
+      </h2>
+      <div className="overflow-x-auto rounded-xl border border-border mb-6">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-panel">
               {["Role", "Level", "Location", "Exp", "Base", "Bonus", "Stock", "Total TC"].map((h) => (
                 <th
                   key={h}
-                  className="py-3 px-4 text-left text-xs font-medium text-subtle uppercase tracking-wider"
+                  className="py-3 px-4 text-left text-xs font-medium text-subtle uppercase tracking-wider whitespace-nowrap"
                 >
                   {h}
                 </th>
@@ -157,29 +220,26 @@ export default async function CompanyPage({ params }: PageProps) {
             {company.salaries.map((s) => (
               <tr
                 key={s.id}
-                className="border-b border-border last:border-0 hover:bg-panel/50 transition-colors"
+                className="border-b border-border last:border-0 hover:bg-panel/60 transition-colors"
               >
-                <td className="py-3 px-4 text-text-secondary">{s.role}</td>
+                <td className="py-3 px-4 font-medium text-text-primary whitespace-nowrap">{s.role}</td>
                 <td className="py-3 px-4">
-                  <span
-                    className={clsx(
-                      "inline-flex items-center px-2 py-0.5 rounded border text-xs font-mono font-medium",
-                      LEVEL_COLORS[s.level]
-                    )}
-                  >
-                    {s.level}
-                  </span>
+                  <LevelPill level={s.level} />
                 </td>
                 <td className="py-3 px-4 text-text-secondary capitalize">{s.location}</td>
-                <td className="py-3 px-4 text-text-secondary font-mono">{s.experience_years}y</td>
+                <td className="py-3 px-4">
+                  <span className="bg-surface border border-border rounded-md px-1.5 py-0.5 text-xs font-mono text-text-secondary">
+                    {s.experience_years}y
+                  </span>
+                </td>
                 <td className="py-3 px-4 font-mono text-text-primary">{formatINR(s.base_salary)}</td>
-                <td className="py-3 px-4 font-mono text-accent-green">
-                  {s.bonus > 0 ? formatINR(s.bonus) : <span className="text-muted">—</span>}
+                <td className="py-3 px-4 font-mono text-blue-600">
+                  {s.bonus > 0 ? formatINR(s.bonus) : <span className="text-muted opacity-30">—</span>}
                 </td>
-                <td className="py-3 px-4 font-mono text-accent-amber">
-                  {s.stock > 0 ? formatINR(s.stock) : <span className="text-muted">—</span>}
+                <td className="py-3 px-4 font-mono text-amber-600">
+                  {s.stock > 0 ? formatINR(s.stock) : <span className="text-muted opacity-30">—</span>}
                 </td>
-                <td className="py-3 px-4 font-mono font-bold text-text-primary">
+                <td className="py-3 px-4 font-mono font-bold text-accent">
                   {formatINR(s.total_compensation)}
                 </td>
               </tr>
@@ -188,15 +248,22 @@ export default async function CompanyPage({ params }: PageProps) {
         </table>
       </div>
 
-      {/* Compare CTA */}
-      <div className="mt-6 text-center">
+      {/* ── Bottom CTAs ── */}
+      <div className="flex items-center justify-center gap-3">
         <Link
           href="/compare"
-          className="inline-flex px-5 py-2.5 rounded-lg border border-border hover:border-accent/40 text-text-secondary hover:text-accent text-sm font-medium transition-all"
+          className="px-5 py-2.5 rounded-xl border border-border hover:border-accent/40 text-text-secondary hover:text-accent text-sm font-medium transition-all"
         >
-          Compare these salaries →
+          Compare salaries →
+        </Link>
+        <Link
+          href="/submit"
+          className="px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
+        >
+          + Add your salary
         </Link>
       </div>
+
     </div>
   );
 }
