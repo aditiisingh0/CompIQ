@@ -38,7 +38,7 @@ async function fetchCompanyWithTimeout(slug: string) {
   const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(
-      `https://compiq.onrender.com/api/companies/${encodeURIComponent(slug)}`,
+      `https://compiq.onrender.com/company/${encodeURIComponent(slug)}`,
       { signal: controller.signal, cache: "no-store" }
     );
     clearTimeout(timeoutId);
