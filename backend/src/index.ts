@@ -19,7 +19,7 @@ app.get("/health", (_, res) =>
 );
 
 // Routes
-app.post("/ingest-salary", ingestRouter);
+app.use("/ingest-salary", ingestRouter);
 app.use("/salaries", salariesRouter);
 app.use("/company", companyRouter);
 app.use("/compare", compareRouter);
