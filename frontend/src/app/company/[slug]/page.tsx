@@ -1,7 +1,11 @@
-import { fetchCompany, formatINR, LEVEL_COLORS, Level } from "@/lib/api";
+import { formatINR, LEVEL_COLORS, Level } from "@/lib/api";
 import Link from "next/link";
 import clsx from "clsx";
 import { notFound } from "next/navigation";
+
+// Never pre-render at build time — always fetch at request time
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 interface PageProps {
   params: { slug: string };
@@ -9,11 +13,11 @@ interface PageProps {
 
 // Maps each level to a color pill style
 const LEVEL_PILL: Record<string, string> = {
-  L3: "bg-teal-50 text-teal-800 border-teal-200",
-  L4: "bg-blue-50 text-blue-800 border-blue-200",
-  L5: "bg-amber-50 text-amber-800 border-amber-200",
-  L6: "bg-purple-50 text-purple-800 border-purple-200",
-  L7: "bg-red-50 text-red-800 border-red-200",
+  L3: "bg-teal-900 text-teal-300 border-teal-700",
+  L4: "bg-blue-900 text-blue-300 border-blue-700",
+  L5: "bg-amber-900 text-amber-300 border-amber-700",
+  L6: "bg-purple-900 text-purple-300 border-purple-700",
+  L7: "bg-red-900 text-red-300 border-red-700",
 };
 
 function LevelPill({ level }: { level: string }) {
@@ -29,24 +33,37 @@ function LevelPill({ level }: { level: string }) {
   );
 }
 
-export default async function CompanyPage({ params }: PageProps) {
-  let company;
+async function fetchCompanyWithTimeout(slug: string) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
-    company = await fetchCompany(decodeURIComponent(params.slug));
+    const res = await fetch(
+      `https://compiq.onrender.com/api/companies/${encodeURIComponent(slug)}`,
+      { signal: controller.signal, cache: "no-store" }
+    );
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    notFound();
+    clearTimeout(timeoutId);
+    return null;
   }
+}
 
-  const maxCount = Math.max(...company.level_distribution.map((l) => l.count));
+export default async function CompanyPage({ params }: PageProps) {
+  const company = await fetchCompanyWithTimeout(decodeURIComponent(params.slug));
+  if (!company) notFound();
 
-  const avgBase = Math.round(company.salaries.reduce((s, r) => s + r.base_salary, 0) / company.salaries.length);
-  const avgBonus = Math.round(company.salaries.reduce((s, r) => s + r.bonus, 0) / company.salaries.length);
-  const avgStock = Math.round(company.salaries.reduce((s, r) => s + r.stock, 0) / company.salaries.length);
-  const maxTC = Math.max(...company.salaries.map((s) => s.total_compensation));
-  const minTC = Math.min(...company.salaries.map((s) => s.total_compensation));
+  const maxCount = Math.max(...company.level_distribution.map((l: any) => l.count));
+
+  const avgBase  = Math.round(company.salaries.reduce((s: number, r: any) => s + r.base_salary, 0) / company.salaries.length);
+  const avgBonus = Math.round(company.salaries.reduce((s: number, r: any) => s + r.bonus, 0) / company.salaries.length);
+  const avgStock = Math.round(company.salaries.reduce((s: number, r: any) => s + r.stock, 0) / company.salaries.length);
+  const maxTC    = Math.max(...company.salaries.map((s: any) => s.total_compensation));
+  const minTC    = Math.min(...company.salaries.map((s: any) => s.total_compensation));
   const totalAvg = avgBase + avgBonus + avgStock;
 
-  const basePct = Math.round((avgBase / totalAvg) * 100);
+  const basePct  = Math.round((avgBase  / totalAvg) * 100);
   const bonusPct = Math.round((avgBonus / totalAvg) * 100);
   const stockPct = Math.round((avgStock / totalAvg) * 100);
 
@@ -65,8 +82,7 @@ export default async function CompanyPage({ params }: PageProps) {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-8">
         <div className="flex items-center gap-4">
-          {/* Company logo circle */}
-          <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-xl font-medium text-teal-800 flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center text-xl font-bold text-accent flex-shrink-0">
             {company.company[0]}
           </div>
           <div>
@@ -74,7 +90,7 @@ export default async function CompanyPage({ params }: PageProps) {
               <h1 className="font-display text-2xl font-bold text-text-primary">
                 {company.company}
               </h1>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green border border-accent-green/20">
                 Verified
               </span>
             </div>
@@ -97,7 +113,7 @@ export default async function CompanyPage({ params }: PageProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         {[
           { label: "Median TC", value: formatINR(company.median_total_compensation), sub: "total comp / year", highlight: true },
-          { label: "Avg Base", value: formatINR(avgBase), sub: "per year" },
+          { label: "Avg Base",  value: formatINR(avgBase),  sub: "per year" },
           { label: "Avg Bonus", value: formatINR(avgBonus), sub: "per year" },
           { label: "Avg Stock", value: formatINR(avgStock), sub: "per year" },
         ].map(({ label, value, sub, highlight }) => (
@@ -106,11 +122,11 @@ export default async function CompanyPage({ params }: PageProps) {
             className={clsx(
               "p-4 rounded-xl",
               highlight
-                ? "bg-teal-50 border border-teal-200"
+                ? "bg-accent/10 border border-accent/20"
                 : "bg-panel border border-border"
             )}
           >
-            <div className={clsx("text-xs uppercase tracking-wider mb-1", highlight ? "text-teal-700" : "text-text-secondary")}>
+            <div className={clsx("text-xs uppercase tracking-wider mb-1", highlight ? "text-accent" : "text-text-secondary")}>
               {label}
             </div>
             <div className={clsx("font-display text-xl font-bold", highlight ? "text-accent" : "text-text-primary")}>
@@ -150,7 +166,7 @@ export default async function CompanyPage({ params }: PageProps) {
       </h2>
       <div className="p-5 rounded-xl border border-border bg-panel mb-6 space-y-3">
         {[
-          { label: "Base", pct: basePct, value: formatINR(avgBase), color: "bg-accent" },
+          { label: "Base",  pct: basePct,  value: formatINR(avgBase),  color: "bg-accent" },
           { label: "Bonus", pct: bonusPct, value: formatINR(avgBonus), color: "bg-blue-400" },
           { label: "Stock", pct: stockPct, value: formatINR(avgStock), color: "bg-amber-400" },
         ].map(({ label, pct, value, color }) => (
@@ -171,10 +187,10 @@ export default async function CompanyPage({ params }: PageProps) {
         Level distribution
       </h2>
       <div className="p-5 rounded-xl border border-border bg-panel mb-6 space-y-3">
-        {company.level_distribution.map(({ level, count }) => {
-          const levelSalaries = company.salaries.filter((s) => s.level === level);
+        {company.level_distribution.map(({ level, count }: any) => {
+          const levelSalaries = company.salaries.filter((s: any) => s.level === level);
           const levelAvg = levelSalaries.length > 0
-            ? Math.round(levelSalaries.reduce((s, r) => s + r.total_compensation, 0) / levelSalaries.length)
+            ? Math.round(levelSalaries.reduce((s: number, r: any) => s + r.total_compensation, 0) / levelSalaries.length)
             : 0;
           return (
             <div key={level} className="flex items-center gap-3">
@@ -217,7 +233,7 @@ export default async function CompanyPage({ params }: PageProps) {
             </tr>
           </thead>
           <tbody>
-            {company.salaries.map((s) => (
+            {company.salaries.map((s: any) => (
               <tr
                 key={s.id}
                 className="border-b border-border last:border-0 hover:bg-panel/60 transition-colors"
@@ -233,11 +249,11 @@ export default async function CompanyPage({ params }: PageProps) {
                   </span>
                 </td>
                 <td className="py-3 px-4 font-mono text-text-primary">{formatINR(s.base_salary)}</td>
-                <td className="py-3 px-4 font-mono text-blue-600">
-                  {s.bonus > 0 ? formatINR(s.bonus) : <span className="text-muted opacity-30">—</span>}
+                <td className="py-3 px-4 font-mono text-blue-400">
+                  {s.bonus > 0 ? formatINR(s.bonus) : <span className="opacity-20">—</span>}
                 </td>
-                <td className="py-3 px-4 font-mono text-amber-600">
-                  {s.stock > 0 ? formatINR(s.stock) : <span className="text-muted opacity-30">—</span>}
+                <td className="py-3 px-4 font-mono text-amber-400">
+                  {s.stock > 0 ? formatINR(s.stock) : <span className="opacity-20">—</span>}
                 </td>
                 <td className="py-3 px-4 font-mono font-bold text-accent">
                   {formatINR(s.total_compensation)}
